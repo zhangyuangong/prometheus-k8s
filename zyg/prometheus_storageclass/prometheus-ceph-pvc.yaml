@@ -1,0 +1,37 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: k8s
+  namespace: monitoring
+  labels:
+    prometheus: k8s
+spec:
+  replicas: 2
+  version: v2.0.0
+  serviceAccountName: prometheus-k8s
+  serviceMonitorSelector:
+    matchExpressions:
+    - {key: k8s-app, operator: Exists}
+  ruleSelector:
+    matchLabels:
+      role: prometheus-rulefiles
+      prometheus: k8s
+  resources:
+    requests:
+      memory: 2G
+  storage:
+    volumeClaimTemplate:
+      metadata:
+        name: prometheus-data
+        annotations:
+          volume.beta.kubernetes.io/storage-class: prometheus-ceph-fast
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 20Gi
+  alerting:
+    alertmanagers:
+    - namespace: monitoring
+      name: alertmanager-main
+      port: web

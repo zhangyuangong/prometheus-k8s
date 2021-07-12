@@ -1,0 +1,17 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: prometheus-ceph-fast
+  annotations:
+    storageclass.beta.kubernetes.io/is-default-class: "true" 
+  namespace: monitoring
+provisioner: kubernetes.io/rbd
+reclaimPolicy: Retain 
+parameters:
+  monitors: 10.68.182.154:6789,10.68.34.155:6789,10.68.247.238:6789 
+  adminId: admin
+  adminSecretName: ceph-admin-secret
+  adminSecretNamespace: kube-system
+  userSecretName: ceph-k8s-secret
+  pool: rbddata
+  userId: k8s
