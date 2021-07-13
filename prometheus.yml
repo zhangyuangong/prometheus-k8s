@@ -1,0 +1,356 @@
+# my global config
+global:
+  scrape_interval:     15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+       - 192.168.10.105:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+   - "targets/rules/*.yaml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    file_sd_configs:
+    - files:
+      - targets/prometheus*.yaml
+      refresh_interval: 1m
+    relabel_configs:
+    - target_label: _address_
+      replacement: 127.0.0.1:9100  
+    - action: replace
+      source_labels: ['job']   
+      regex: (.*)              
+      replacement: $1         
+      target_label: digitalgd 
+    - action: labeldrop 
+      regex: job
+
+  - job_name: 'node-exporter'
+    file_sd_configs:
+    - files:
+      - targets/node*.yaml
+      refresh_interval: 1m
+  
+  - job_name: 'cAdvisor'
+    file_sd_configs:
+    - files:
+      - targets/cAdvisor*.yaml
+      refresh_interval: 1m
+
+  - job_name: 'redis-exporter'
+    file_sd_configs:
+    - files:
+      - targets/redis*.yaml
+      refresh_interval: 1m
+
+  - job_name: 'mysql_export'
+    file_sd_configs:
+    - files:
+      - targets/mysql_export*.yaml
+      refresh_interval: 1m
+
+  - job_name: baidu_http2xx_probe
+    params:
+      module:
+      - http_2xx
+      target:
+      - baidu.com
+    metrics_path: /probe
+    static_configs:
+    - targets:
+      - 192.168.10.105:9115
+  
+  - job_name: prometheus_http2xx_probe
+    params:
+      module:
+      - http_2xx
+      target:
+      - prometheus.io
+    metrics_path: /probe
+    static_configs:
+    - targets:
+      - 192.168.10.105:9115
+
+  - job_name: kubernetes-apiservers
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - api_server: https://192.168.10.100:6443/    
+      role: endpoints
+      bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token    
+      tls_config:
+        insecure_skip_verify: true    
+    bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+    tls_config:
+      insecure_skip_verify: true 
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+      separator: ;
+      regex: default;kubernetes;https
+      replacement: $1
+      action: keep
+    - separator: ;
+      regex: (.*)
+      target_label: __address__
+      replacement: 192.168.10.100:6443
+      action: replace
+
+  - job_name: kubernetes-node-exporter
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - api_server: https://192.168.10.100:6443/
+      role: node
+      bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+      tls_config:
+        insecure_skip_verify: true    
+    bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+    tls_config:
+      insecure_skip_verify: true 
+    relabel_configs:
+    - separator: ;
+      regex: __meta_kubernetes_node_label_(.+)
+      replacement: $1
+      action: labelmap
+    - separator: ;
+      regex: (.*)
+      target_label: __address__
+      replacement: 192.168.10.100:6443
+      action: replace
+    - source_labels: [__meta_kubernetes_node_name]
+      separator: ;
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}/proxy/metrics
+      action: replace
+
+  - job_name: kubernetes-node-exporter-9100
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - api_server: https://192.168.10.100:6443/
+      role: node
+      bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+      tls_config:
+        insecure_skip_verify: true    
+    bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+    tls_config:
+      insecure_skip_verify: true 
+    relabel_configs:
+    - separator: ;
+      regex: __meta_kubernetes_node_label_(.+)
+      replacement: $1
+      action: labelmap
+    - separator: ;
+      regex: (.*)
+      target_label: __address__
+      replacement: 192.168.10.100:6443
+      action: replace
+    - source_labels: [__meta_kubernetes_node_name]
+      separator: ;
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}:9100/proxy/metrics
+      action: replace
+
+  - job_name: kubernetes-node-kubelet
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - api_server: https://192.168.10.100:6443/
+      role: node
+      bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+      tls_config:
+        insecure_skip_verify: true    
+    bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+    tls_config:
+      insecure_skip_verify: true 
+    relabel_configs:
+    - separator: ;
+      regex: __meta_kubernetes_node_label_(.+)
+      replacement: $1
+      action: labelmap
+    - separator: ;
+      regex: (.*)
+      target_label: __address__
+      replacement: 192.168.10.100:6443
+      action: replace
+    - source_labels: [__meta_kubernetes_node_name]
+      separator: ;
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}:10250/proxy/metrics
+      action: replace
+
+  - job_name: kubernetes-cadvisor
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - api_server: https://192.168.10.100:6443/
+      role: node
+      bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+      tls_config:
+        insecure_skip_verify: true    
+    bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+    tls_config:
+      insecure_skip_verify: true 
+    relabel_configs:
+    - separator: ;
+      regex: __meta_kubernetes_node_label_(.+)
+      replacement: $1
+      action: labelmap
+    - separator: ;
+      regex: (.*)
+      target_label: __address__
+      replacement: 192.168.10.100:6443
+      action: replace
+    - source_labels: [__meta_kubernetes_node_name]
+      separator: ;
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+      action: replace
+
+  - job_name: 'kubernetes-pods'
+    scheme: https
+    kubernetes_sd_configs:
+    - api_server: https://192.168.10.100:6443/
+      role: pod
+      bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+      tls_config:
+        insecure_skip_verify: true
+    tls_config:
+      insecure_skip_verify: true 
+    bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_pod_name]
+      action: replace
+      target_label: kubernetes_pod_name
+    - action: labelmap
+      regex: __meta_kubernetes_pod_label_(.+)
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+      action: replace
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+      target_label: __address__
+    - source_labels: [__address__]
+      separator: ;
+      regex: '.*:(.*)'
+      target_label: __pod_port__
+      replacement: $1
+      action: replace
+    - source_labels: [__meta_kubernetes_namespace,__meta_kubernetes_pod_name, __pod_port__]
+      separator: ;
+      regex: (.*);(.*);(.*)
+      target_label: __metrics_path__
+      replacement: /api/v1/namespaces/$1/pods/$2:$3/proxy/metrics
+      action: replace
+    - source_labels: [__address__]
+      separator: ;
+      regex: (.*)
+      target_label: __address__
+      replacement: 192.168.10.100:6443
+      action: replace
+
+  - job_name: 'kubernetes-services'
+    scheme: https
+    kubernetes_sd_configs:
+    - api_server: https://192.168.10.100:6443/
+      role: service
+      bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+      tls_config:
+        insecure_skip_verify: true
+    tls_config:
+      insecure_skip_verify: true 
+    bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+    relabel_configs:
+    - separator: ;
+      regex: __meta_kubernetes_service_label_(.+)
+      replacement: $1
+      action: labelmap
+    - source_labels: [__address__]
+      separator: ;
+      regex: '.*:(.*)'
+      target_label: __service_port__
+      replacement: $1
+      action: replace
+    - source_labels: [__meta_kubernetes_namespace,__meta_kubernetes_service_name, __service_port__]
+      separator: ;
+      regex: (.*);(.*);(.*)
+      target_label: __metrics_path__
+      replacement: /api/v1/namespaces/$1/services/$2:$3/proxy/metrics
+      action: replace
+    - source_labels: [__address__]
+      separator: ;
+      regex: (.*)
+      target_label: __address__
+      replacement: 192.168.10.100:6443
+      action: replace
+
+  - job_name: kubernetes-endpoints
+    scheme: https
+    metrics_path: /metrics
+    kubernetes_sd_configs:
+    - role: endpoints
+    - api_server: https://192.168.10.100:6443/
+      role: endpoints
+      bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+      tls_config:
+        insecure_skip_verify: true  
+    bearer_token_file: /usr/local/prometheus/targets/k8s/alibaba-token
+    tls_config:
+      insecure_skip_verify: true 
+    relabel_configs:
+    - separator: ;
+      regex: __meta_kubernetes_service_label_(.+)
+      replacement: $1
+      action: labelmap
+    - source_labels: [__meta_kubernetes_namespace]
+      separator: ;
+      regex: (.*)
+      target_label: kubernetes_namespace
+      replacement: $1
+      action: replace
+    - source_labels: [__meta_kubernetes_endpoints_name]
+      separator: ;
+      regex: (.*)
+      target_label: kubernetes_endpoint_name
+      replacement: $1
+      action: replace
+    - source_labels: [__address__]
+      separator: ;
+      regex: '.*:(.*)'
+      target_label: __service_port__
+      replacement: $1
+      action: replace
+    - source_labels: [__meta_kubernetes_namespace,__meta_kubernetes_endpoint_address_target_name, __service_port__]
+      separator: ;
+      regex: (.*);(.*);(.*)
+      target_label: __metrics_path__
+      replacement: /api/v1/namespaces/$1/pods/$2:$3/proxy/metrics
+      action: replace
+    - source_labels: [__address__]
+      separator: ;
+      regex: (.*)
+      target_label: __address__
+      replacement: 192.168.10.100:6443
+      action: replace
+
+
